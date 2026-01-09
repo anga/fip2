@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Training artifacts
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+
+# Data files
+*.txt
+!CLAUDE.md
+*.bin
+*.parquet
+
+# Logs
+*.log
+training_log*.txt
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
