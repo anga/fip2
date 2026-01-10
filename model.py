@@ -275,12 +275,21 @@ class ZonedBrainModel(nn.Module):
             Tensor de shape (1, prompt_len + generated_len)
         """
         self.eval()
-        generated = prompt_ids.clone()
+        prompt_len = prompt_ids.shape[1]
+
+        # Pre-allocar tensor para evitar múltiples torch.cat (fuga de memoria)
+        generated = torch.zeros(
+            1, prompt_len + max_new_tokens,
+            dtype=prompt_ids.dtype, device=self.device
+        )
+        generated[:, :prompt_len] = prompt_ids
+        actual_len = prompt_len
 
         with torch.no_grad():
             for _ in range(max_new_tokens):
                 # Tomar los últimos context_length tokens
-                context = generated[:, -self.config.context_length:]
+                start_idx = max(0, actual_len - self.config.context_length)
+                context = generated[:, start_idx:actual_len]
 
                 # Forward pass
                 logits, _ = self.forward(context)
@@ -297,15 +306,17 @@ class ZonedBrainModel(nn.Module):
                 probs = F.softmax(logits, dim=-1)
                 next_token = torch.multinomial(probs, num_samples=1)
 
-                # Añadir al resultado
-                generated = torch.cat([generated, next_token], dim=1)
+                # Añadir al resultado (sin torch.cat)
+                generated[:, actual_len] = next_token.squeeze()
+                actual_len += 1
 
                 # Solo parar en byte 0 (null), no en newline
                 if next_token.item() == 0:
                     break
 
         self.train()
-        return generated
+        # Retornar solo la parte generada
+        return generated[:, :actual_len]
 
     def get_num_parameters(self) -> Dict[str, int]:
         """Cuenta parámetros por componente."""

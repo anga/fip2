@@ -17,7 +17,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
-from fip2.config import FIP2Config, TrainingConfig, get_small_config, get_medium_config
+from fip2.config import FIP2Config, TrainingConfig, get_small_config, get_medium_config, get_large_config, get_xlarge_config
 from fip2.model import ZonedBrainModel
 from fip2.training import Trainer
 from fip2.utils import get_device, print_device_status
@@ -34,6 +34,10 @@ def cmd_train(args):
         config = get_small_config()
     elif args.config == "medium":
         config = get_medium_config()
+    elif args.config == "large":
+        config = get_large_config()
+    elif args.config == "xlarge":
+        config = get_xlarge_config()
     else:
         config = FIP2Config()
 
@@ -86,7 +90,7 @@ def cmd_train(args):
     # Resume: primero explícito, luego automático
     if args.resume:
         trainer.load_checkpoint(args.resume)
-    else:
+    elif not args.no_resume:
         # Auto-resume desde el último checkpoint
         trainer.auto_resume()
 
@@ -210,7 +214,7 @@ def cmd_info(args):
 
     # Model info
     print("\nModel configurations:")
-    for name, config_fn in [("small", get_small_config), ("medium", get_medium_config)]:
+    for name, config_fn in [("small", get_small_config), ("medium", get_medium_config), ("large", get_large_config), ("xlarge", get_xlarge_config)]:
         cfg = config_fn()
         print(f"\n  {name}:")
         print(f"    Zones: {cfg.num_zones}")
@@ -218,6 +222,7 @@ def cmd_info(args):
         print(f"    Hub neurons: {cfg.hub_neurons}")
         print(f"    Total neurons: {cfg.total_neurons}")
         print(f"    Neuron dim: {cfg.neuron_dim}")
+        print(f"    Context length: {cfg.context_length}")
 
 
 def cmd_test_forward(args):
@@ -275,7 +280,7 @@ def main():
     # Train command
     train_parser = subparsers.add_parser("train", help="Train the model")
     train_parser.add_argument("--data", required=True, help="Path to training data")
-    train_parser.add_argument("--config", choices=["small", "medium", "large"], default="medium")
+    train_parser.add_argument("--config", choices=["small", "medium", "large", "xlarge"], default="medium")
     train_parser.add_argument("--epochs", type=int, default=10)
     train_parser.add_argument("--steps-per-epoch", type=int, default=1000)
     train_parser.add_argument("--batch-size", type=int, default=None)
@@ -289,6 +294,7 @@ def main():
     train_parser.add_argument("--device", choices=["auto", "mps", "cuda", "cpu"], default=None)
     train_parser.add_argument("--checkpoint-dir", default="checkpoints")
     train_parser.add_argument("--resume", default=None, help="Path to checkpoint to resume")
+    train_parser.add_argument("--no-resume", action="store_true", help="Don't auto-resume from checkpoints")
     train_parser.add_argument("--eval-interval", type=int, default=100)
     train_parser.add_argument("--save-interval", type=int, default=1000)
     train_parser.add_argument("--log-interval", type=int, default=10)

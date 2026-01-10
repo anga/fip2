@@ -197,10 +197,9 @@ class PlasticityManager:
         # (correlación negativa también indica flujo de información)
         flow = correlation.abs()
 
-        # Actualizar EMA
-        self.flow_ema[zone_idx] = (
-            self.ema_decay * self.flow_ema[zone_idx]
-            + (1 - self.ema_decay) * flow
+        # Actualizar EMA in-place para evitar crear tensores intermedios
+        self.flow_ema[zone_idx].mul_(self.ema_decay).add_(
+            flow, alpha=(1 - self.ema_decay)
         )
 
         return self.flow_ema[zone_idx]
@@ -597,18 +596,17 @@ class PlasticityManager:
             edge_utility = self.compute_edge_utility(i, zone)
             neuron_utility = self.compute_neuron_utility(i, zone, edge_utility)
 
-            # Actualizar EMAs (o inicializar en el primer paso)
+            # Actualizar EMAs in-place (o inicializar en el primer paso)
             if self._first_step:
-                self.zone_edge_utilities[i] = edge_utility.clone()
-                self.zone_neuron_utilities[i] = neuron_utility.clone()
+                self.zone_edge_utilities[i].copy_(edge_utility)
+                self.zone_neuron_utilities[i].copy_(neuron_utility)
             else:
-                self.zone_edge_utilities[i] = (
-                    self.ema_decay * self.zone_edge_utilities[i]
-                    + (1 - self.ema_decay) * edge_utility
+                # EMA in-place para evitar crear tensores intermedios
+                self.zone_edge_utilities[i].mul_(self.ema_decay).add_(
+                    edge_utility, alpha=(1 - self.ema_decay)
                 )
-                self.zone_neuron_utilities[i] = (
-                    self.ema_decay * self.zone_neuron_utilities[i]
-                    + (1 - self.ema_decay) * neuron_utility
+                self.zone_neuron_utilities[i].mul_(self.ema_decay).add_(
+                    neuron_utility, alpha=(1 - self.ema_decay)
                 )
 
             # Aplicar plasticidad (ahora incluye muerte/resurrección Hebbian)
@@ -652,7 +650,10 @@ class PlasticityManager:
             zone_stats=zone_stats,
         )
 
+        # Limitar historial para evitar fuga de memoria (solo últimos 1000)
         self.stats_history.append(stats)
+        if len(self.stats_history) > 1000:
+            self.stats_history = self.stats_history[-1000:]
 
         # Ya no es el primer paso
         self._first_step = False

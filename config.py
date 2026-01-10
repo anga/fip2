@@ -132,3 +132,17 @@ def get_large_config() -> FIP2Config:
         neuron_dim=128,
         num_waves=5,
     )
+
+
+def get_xlarge_config() -> FIP2Config:
+    """Configuración extra large con contexto de 32k caracteres."""
+    return FIP2Config(
+        num_zones=10,
+        neurons_per_zone=800,
+        hub_neurons=1600,
+        context_length=32768,  # 32k caracteres
+        neuron_dim=256,
+        num_waves=7,
+        batch_size=4,  # Reducido por memoria
+        intra_zone_connectivity=0.05,  # Más sparse para escalar
+    )
